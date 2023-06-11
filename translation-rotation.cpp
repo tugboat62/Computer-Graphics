@@ -9,7 +9,7 @@ GLdouble vx = 0.01, vy = 0.001;
 void drawTriangle(){
     glColor3d(0, 1, 0);
     glBegin(GL_TRIANGLES);
-        glVertex2d(-0.5, 0.5);
+        glVertex2d(-0.5, 0.5); 
         glVertex2d(0.0, 1.0);
         glVertex2d(0.5, 0.5);
     glEnd();

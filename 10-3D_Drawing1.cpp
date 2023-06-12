@@ -1,6 +1,8 @@
+#define _USE_MATH_DEFINES
+
 #include <windows.h>  // for MS Windows
 #include <GL/glut.h>  // GLUT, include glu.h and gl.h
-#include <cmath>
+#include <cmath> 
 
 /* Initialize OpenGL Graphics */
 void initGL() {
@@ -11,8 +13,8 @@ void initGL() {
 
 // Global variables
 GLfloat eyex = 4, eyey = 4, eyez = 4;
-GLfloat centerx = 0, centery = 0, centerz = 0;
-GLfloat upx = 0, upy = 1, upz = 0;
+GLfloat centerx = 0, centery = 0, centerz = 0;  // look = center - eye
+GLfloat upx = 0, upy = 1, upz = 0;  // up . look != 0, direction -> up != look
 bool isAxes = true, isCube = false, isPyramid = false;
 
 /* Draw axes: X in Red, Y in Green and Z in Blue */
@@ -121,6 +123,25 @@ void drawPyramid() {
     glEnd();   // Done drawing the pyramid
 }
 
+void drawCylinder() {
+    GLdouble r = 1, h = 1;
+    for (int theta = 0; theta < 360; theta++) {
+        GLdouble x1 = r * cos(theta * M_PI / 180);
+        GLdouble y1 = r * sin(theta * M_PI / 180);
+        
+        GLdouble x2 = r * cos((theta+1) * M_PI / 180);
+        GLdouble y2 = r * sin((theta+1) * M_PI / 180);
+        glBegin(GL_QUADS);
+            glColor3d(1, 0, 0);
+            glVertex3d(x1, y1, -h/2);
+            glVertex3d(x1, y1, h/2);
+            glVertex3d(x2, y2, h/2);
+            glVertex3d(x2, y2, -h/2);
+        glEnd();
+    }
+
+}
+
 /*  Handler for window-repaint event. Call back when the window first appears and
     whenever the window needs to be re-painted. */
 void display() {
@@ -137,9 +158,11 @@ void display() {
               centerx,centery,centerz,
               upx,upy,upz);
     // draw
-    if (isAxes) drawAxes();
-    if (isCube) drawCube();
-    if (isPyramid) drawPyramid();
+    // if (isAxes) drawAxes();
+    // if (isCube) drawCube();
+    // if (isPyramid) drawPyramid();
+
+    drawCylinder();
 
     glutSwapBuffers();  // Render now
 }

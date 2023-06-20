@@ -12,8 +12,8 @@ void initGL() {
 }
 
 // Global variables
-GLfloat eyex = 3, eyey = 4, eyez = 2;
-GLfloat centerx = 0, centery = 0, centerz = 0;  // look = center - eye
+GLfloat eyex = 0, eyey = 1, eyez = 4;
+GLfloat centerx = 0, centery = 1, centerz = 0;  // look = center - eye
 GLfloat upx = 0, upy = 1, upz = 0;  // up . look != 0, direction -> up != look
 bool isAxes = true, isCube = false, isPyramid = false;
 
@@ -162,8 +162,8 @@ void display() {
     // if (isCube) drawCube();
     // if (isPyramid) drawPyramid();
 
-    // drawCylinder();
-    drawAxes();
+    drawCylinder();
+    // drawAxes();
 
     glutSwapBuffers();  // Render now
 }

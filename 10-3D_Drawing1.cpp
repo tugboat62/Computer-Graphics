@@ -158,11 +158,11 @@ void display() {
               centerx,centery,centerz,
               upx,upy,upz);
     // draw
-    // if (isAxes) drawAxes();
-    // if (isCube) drawCube();
-    // if (isPyramid) drawPyramid();
+    if (isAxes) drawAxes();
+    if (isCube) drawCube();
+    if (isPyramid) drawPyramid();
 
-    drawCylinder();
+    // drawCylinder();
     // drawAxes();
 
     glutSwapBuffers();  // Render now

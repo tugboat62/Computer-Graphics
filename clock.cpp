@@ -111,7 +111,7 @@ void timerListener1(int value) {
     }
     theta += dtheta;
     ma -= 1.0/1000;
-    ha -= 1.0/60000;
+    ha -= 1.0/12000;
     // std::cout << sa << " " << ma << " " << ha << std::endl;
     glutPostRedisplay();
     glutTimerFunc(10, timerListener1, 0);

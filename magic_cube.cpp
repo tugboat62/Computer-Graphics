@@ -101,7 +101,7 @@ void drawCircle()
     }
 }
 
-int subdivision = 3;
+int subdivision = 5;
 
 /* Initialize OpenGL Graphics */
 void initGL()
@@ -118,6 +118,8 @@ int sc_up_down = trans_rate;
 double scaling_triangle = sqrt(2.0 / 3) / (double)(trans_rate);
 
 GLfloat t_side = 1.0; // Triangle side length
+float angle = 0.0;    // Rotation angle for animation
+bool rotate = false;  // Rotate triangle?
 
 void drawAxes()
 {
@@ -265,7 +267,7 @@ void display()
               pos.x+l.x,pos.y+l.y,pos.z+l.z,
               u.x,u.y,u.z);
 
-
+    glRotated(angle, 0, 1, 0);
     drawOctahedron();
     glutSwapBuffers(); // Render now
 }
@@ -299,52 +301,87 @@ void reshapeListener(GLsizei width, GLsizei height)
 /* Callback handler for normal-key event */
 void keyboardListener(unsigned char key, int x, int y)
 {
+    double rate = 0.01;
     double v = 0.25;
     double s;
-    double theta1 = atan(l.x / l.z);
-
-    double r1 = sqrt(l.x * l.x + l.z * l.z);
-    double theta2 = 1*M_PI/180;
-    double theta = theta1 + theta2;
-    double theta3 = atan2f(l.x, l.z);
-    double r2 = sqrt(l.x * l.x + l.z * l.z);
-    double theta4 = atanf(v / r2);
-    int p = (int)(theta/90) % 4;
     switch (key)
     {
     // Rotation
     case '1':
         // look left
-        l.x = -r1 * sin(theta1 + theta2);
-        l.z = -r1 * cos(theta1 + theta2);
+        r.x = r.x*cos(rate)+l.x*sin(rate);
+        r.y = r.y*cos(rate)+l.y*sin(rate);
+        r.z = r.z*cos(rate)+l.z*sin(rate);
+
+        l.x = l.x*cos(rate)-r.x*sin(rate);
+        l.y = l.y*cos(rate)-r.y*sin(rate);
+        l.z = l.z*cos(rate)-r.z*sin(rate);
         break;
     case '2':
         // look right
-        l.x = -r1 * sin(theta1 - theta2);
-        l.z = -r1 * cos(theta1 - theta2);
+        r.x = r.x*cos(-rate)+l.x*sin(-rate);
+        r.y = r.y*cos(-rate)+l.y*sin(-rate);
+        r.z = r.z*cos(-rate)+l.z*sin(-rate);
+
+        l.x = l.x*cos(-rate)-r.x*sin(-rate);
+        l.y = l.y*cos(-rate)-r.y*sin(-rate);
+        l.z = l.z*cos(-rate)-r.z*sin(-rate);
         break;
     case '3':
         // look up
-        
+        l.x = l.x*cos(rate)+u.x*sin(rate);
+        l.y = l.y*cos(rate)+u.y*sin(rate);
+        l.z = l.z*cos(rate)+u.z*sin(rate);
+
+        u.x = u.x*cos(rate)-l.x*sin(rate);
+        u.y = u.y*cos(rate)-l.y*sin(rate);
+        u.z = u.z*cos(rate)-l.z*sin(rate);
         break;
     case '4':
-        pos.y -= v;
+        // look down
+        l.x = l.x*cos(-rate)+u.x*sin(-rate);
+        l.y = l.y*cos(-rate)+u.y*sin(-rate);
+        l.z = l.z*cos(-rate)+u.z*sin(-rate);
+
+        u.x = u.x*cos(-rate)-l.x*sin(-rate);
+        u.y = u.y*cos(-rate)-l.y*sin(-rate);
+        u.z = u.z*cos(-rate)-l.z*sin(-rate);
         break;
     case '5':
-        pos.z += v;
+        // tilt counterclockwise
+        u.x = u.x*cos(rate)+r.x*sin(rate);
+        u.y = u.y*cos(rate)+r.y*sin(rate);
+        u.z = u.z*cos(rate)+r.z*sin(rate);
+
+        r.x = r.x*cos(rate)-u.x*sin(rate);
+        r.y = r.y*cos(rate)-u.y*sin(rate);
+        r.z = r.z*cos(rate)-u.z*sin(rate);
         break;
     case '6':
-        pos.z -= v;
+        // tilt clockwise
+        u.x = u.x*cos(-rate)+r.x*sin(-rate);
+        u.y = u.y*cos(-rate)+r.y*sin(-rate);
+        u.z = u.z*cos(-rate)+r.z*sin(-rate);
+
+        r.x = r.x*cos(-rate)-u.x*sin(-rate);
+        r.y = r.y*cos(-rate)-u.y*sin(-rate);
+        r.z = r.z*cos(-rate)-u.z*sin(-rate);
+        break;
+    case 'a':
+        // rotate obj clockwise
+        angle -= 5;
+        break;
+    case 'd':
+        // rotate obj counterclockwise
+        angle += 5;
         break;
     case ',':
         if (sc_up_down > 0)
             sc_up_down--;
-        // std::cout << sc_up_down << std::endl;
         break;
     case '.':
         if (sc_up_down < trans_rate)
             sc_up_down++;
-        // std::cout << sc_up_down << std::endl;
         break;
     // Control exit
     case 27:     // ESC key
@@ -352,18 +389,6 @@ void keyboardListener(unsigned char key, int x, int y)
         break;
     }
     glutPostRedisplay(); // Post a paint request to activate display()
-}
-
-void mat_mul(double a[3][3], double b[3][1], double c[3][1])
-{
-    int i, j, k;
-    for (i = 0; i < 3; i++)
-        for (j = 0; j < 1; j++)
-        {
-            c[i][j] = 0;
-            for (k = 0; k < 3; k++)
-                c[i][j] += a[i][k] * b[k][j];
-        }
 }
 
 /* Callback handler for special-key event */
@@ -382,12 +407,12 @@ void specialKeyListener(int key, int x, int y)
         pos.y+=r.y;
         pos.z+=r.z;
         break;
-    case GLUT_KEY_UP:		//down arrow key
+    case GLUT_KEY_UP:
         pos.x+=l.x;
         pos.y+=l.y;
         pos.z+=l.z;
         break;
-    case GLUT_KEY_DOWN:		// up arrow key
+    case GLUT_KEY_DOWN:
         pos.x-=l.x;
         pos.y-=l.y;
         pos.z-=l.z;

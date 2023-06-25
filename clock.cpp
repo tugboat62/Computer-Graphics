@@ -2,14 +2,16 @@
 
 #include <iostream>
 #include <GL/glut.h>
-#include <cmath> 
+#include <cmath>
+#include <ctime> 
 
 GLdouble l = 0.4, bob = 0.05, r = 0.4, sr = 0.3;
 GLdouble l_ind = 0.06, s_ind = 0.02;
-GLdouble sec_hand = 0.2, min_hand = 0.15, hr_hand = 0.1;
+GLdouble sec_hand = 0.22, min_hand = 0.2, hr_hand = 0.15;
 double theta = -90.0, dtheta = -60.0/100;
-double sa = 90, ma = 90, ha = -180;
+double sa, ma, ha;
 bool sec = false;
+
 
 void drawCircle(GLdouble r, GLdouble cx, GLdouble cy) {
     glBegin(GL_LINE_LOOP);  // All vertices form a single loop of single pixel width
@@ -123,8 +125,41 @@ void timerListener2(int value) {
     glutTimerFunc(1000, timerListener2, 0);
 }
 
+void setAngles() {
+    time_t currentTime = time(nullptr);
+
+    // Convert the current time to a local time structure
+    struct tm* localTime = localtime(&currentTime);
+
+    // Retrieve the hour, minute, and second values
+    int hour = localTime->tm_hour;
+    int minute = localTime->tm_min;
+    int second = localTime->tm_sec;
+
+    // Convert the hour to 12-hour format
+    bool isPM = hour >= 12;
+    if (hour > 12)
+        hour -= 12;
+    else if (hour == 0)
+        hour = 12;
+
+    // Print the current time in 12-hour format
+    std::cout << "Current time: " << hour << ":" << minute << ":" << second;
+    if (isPM)
+        std::cout << " PM";
+    else
+        std::cout << " AM";
+    std::cout << std::endl;
+    sa = 90 - second * 6;
+    ma = 90 - (minute * 6 + second * 0.1);
+    ha = 90 - (hour * 30 + minute * 0.5 + second * (30.0/3600.0));
+}
+
+
 int main(int argc, char **argv)
 {
+    setAngles();
+    
     glutInit(&argc, argv);
     glutInitWindowSize(500, 500);
     glutInitWindowPosition(0, 100);

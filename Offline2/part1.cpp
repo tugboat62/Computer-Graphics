@@ -3,6 +3,7 @@
 #include <stack>
 #include <sstream>
 #include <cmath>
+#include <iomanip>
 
 #define _USE_MATH_DEFINES
 
@@ -30,7 +31,7 @@ struct Point {
 };
 
 struct Point eye, look, up;
-float fovY, aspectRatio, near, far;
+float fovY, aspectRatio, near, far, fovX;
 
 // initialize empty stack S 
 const int ROWS = 4;
@@ -57,7 +58,7 @@ float M[ROWS][COLS] = { {1, 0, 0, 0},
                         {0, 0, 1, 0},
                         {0, 0, 0, 1} };
 
-
+// Current State Matrix * B = C
 void matrixMultiplication(float** B, float** C) {
     for(int i=0; i<ROWS; i++) {
         for(int j=0; j<COLS; j++) {
@@ -69,7 +70,8 @@ void matrixMultiplication(float** B, float** C) {
     }
 }
 
-void matrixMultiplication(float** B, float** C, float** RT) {
+// RT matrix * B = C
+void matrixMultiplication(float** B, float** RT, float** C) {
     for(int i=0; i<ROWS; i++) {
         for(int j=0; j<COLS; j++) {
             C[i][j] = 0;
@@ -80,6 +82,7 @@ void matrixMultiplication(float** B, float** C, float** RT) {
     }
 }
 
+// Current State Matrix * B = Current State Matrix
 void matrixMultiplication(float B[ROWS][COLS]) {
     float C[ROWS][COLS];
     for(int i=0; i<ROWS; i++) {
@@ -97,7 +100,20 @@ void matrixMultiplication(float B[ROWS][COLS]) {
     }
 }
 
+// M1 * M2 = result
 void matrixMultiplication(float m1[ROWS][COLS], float m2[ROWS][COLS], float** result) {
+    for(int i=0; i<ROWS; i++) {
+        for(int j=0; j<COLS; j++) {
+            result[i][j] = 0;
+            for(int k=0; k<COLS; k++) {
+                result[i][j] += m1[i][k] * m2[k][j];
+            }
+        }
+    }
+}
+
+// M1 * M2 = result
+void matrixMultiplication(float m1[ROWS][COLS], float** m2, float** result) {
     for(int i=0; i<ROWS; i++) {
         for(int j=0; j<COLS; j++) {
             result[i][j] = 0;
@@ -156,9 +172,9 @@ void transformPoint(struct Point p, struct Point* newP) {
 
     matrixMultiplication(pointMatrix, resultMatrix);
 
-    newP->x = resultMatrix[0][0];
-    newP->y = resultMatrix[1][0];
-    newP->z = resultMatrix[2][0];
+    newP->x = resultMatrix[0][0]/resultMatrix[3][0];
+    newP->y = resultMatrix[1][0]/resultMatrix[3][0];
+    newP->z = resultMatrix[2][0]/resultMatrix[3][0];
 }
 
 void transformPoint(struct Point p, struct Point* newP, float** RT) {
@@ -176,11 +192,33 @@ void transformPoint(struct Point p, struct Point* newP, float** RT) {
         resultMatrix[i] = new float[COLS];
     }
 
-    matrixMultiplication(pointMatrix, resultMatrix, RT);
+    matrixMultiplication(pointMatrix, RT, resultMatrix);
 
-    newP->x = resultMatrix[0][0];
-    newP->y = resultMatrix[1][0];
-    newP->z = resultMatrix[2][0];
+    newP->x = resultMatrix[0][0]/resultMatrix[3][0];
+    newP->y = resultMatrix[1][0]/resultMatrix[3][0];
+    newP->z = resultMatrix[2][0]/resultMatrix[3][0];
+}
+
+void transformPoint(struct Point p, struct Point* newP, float P[ROWS][COLS]) {
+    float** pointMatrix = new float*[ROWS];
+    for(int i=0; i<ROWS; i++) {
+        pointMatrix[i] = new float[COLS];
+    }
+    pointMatrix[0][0] = p.x;
+    pointMatrix[1][0] = p.y;
+    pointMatrix[2][0] = p.z;
+    pointMatrix[3][0] = 1;
+
+    float** resultMatrix = new float*[ROWS];
+    for(int i=0; i<ROWS; i++) {
+        resultMatrix[i] = new float[COLS];
+    }
+
+    matrixMultiplication(P, pointMatrix, resultMatrix); 
+
+    newP->x = resultMatrix[0][0]/resultMatrix[3][0];
+    newP->y = resultMatrix[1][0]/resultMatrix[3][0];
+    newP->z = resultMatrix[2][0]/resultMatrix[3][0];
 }
 
 void translate(struct Point p) {
@@ -252,10 +290,17 @@ void crossProduct(struct Point *p1, struct Point *p2, struct Point *p3) {
 }
 
 int main(int argc, char** argv) {
-    ifstream inputFile("3/scene.txt");
-    fstream stage1("stage1.txt", std::ios::in | std::ios::out);
-    fstream stage2("stage2.txt", std::ios::in | std::ios::out);
-    fstream stage3("stage3.txt", std::ios::in | std::ios::out);
+
+    string file1 = "4/scene.txt";
+
+    if (argc == 2) {
+        file1 = argv[1];
+    }
+
+    ifstream inputFile(file1);
+    ofstream stage1("stage1.txt");
+    ofstream stage2("stage2.txt");
+    ofstream stage3("stage3.txt");
 
     if (inputFile.is_open() && stage1.is_open() && stage2.is_open() && stage3.is_open()) {
         cout << "Files opened successfully." << endl;
@@ -296,6 +341,10 @@ int main(int argc, char** argv) {
             far = coord[3];
         }
     }
+    fovX = fovY * aspectRatio;
+    float t_ = near * tan(fovY*M_PI/360.0);
+    float r_ = near * tan(fovX*M_PI/360.0);
+
     transformationMatrices.push(Matrix(M));
     
     struct Point l = look - eye;
@@ -322,6 +371,11 @@ int main(int argc, char** argv) {
     }
     matrixMultiplication(R, T, RT);
     
+    float P[ROWS][COLS] = { {near/r_, 0, 0, 0},
+                             {0, near/t_, 0, 0},
+                             {0, 0, -(far+near)/(far-near), -(2*far*near)/(far-near)},
+                             {0, 0, -1, 0} };
+
     while (getline(inputFile, line)) {
         if (line.compare("triangle") == 0) {
             for(int i=0; i<3; i++){
@@ -332,14 +386,21 @@ int main(int argc, char** argv) {
                 transformPoint(p, &newP);
                 string output = to_string(newP.x) + " " + to_string(newP.y) + " " + to_string(newP.z);
                 stage1 << output << endl; // output P’
+                // stage1 << fixed << setprecision(7) << newP.x << " " << newP.y << " " << newP.z << endl;
                 struct Point newP2;
                 transformPoint(newP, &newP2, RT);
                 string output2 = to_string(newP2.x) + " " + to_string(newP2.y) + " " + to_string(newP2.z);
                 stage2 << output2 << endl; // output P’’
-
+                // stage2 << fixed << setprecision(7) << newP2.x << " " << newP2.y << " " << newP2.z << endl;
+                struct Point newP3;
+                transformPoint(newP2, &newP3, P);
+                string output3 = to_string(newP3.x) + " " + to_string(newP3.y) + " " + to_string(newP3.z);
+                stage3 << output3 << endl; // output P’’’
+                // stage3 << fixed << setprecision(7) << newP3.x << " " << newP3.y << " " << newP3.z << endl;
             }
             stage1 << endl;
             stage2 << endl;
+            stage3 << endl;
 
         } else if (line.compare("translate") == 0)
         {

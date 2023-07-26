@@ -12,8 +12,8 @@ do
     file2="stage1.txt"
     file3="stage2.txt"
     file4="stage3.txt"
-    g++ -o part1 part1.cpp
-    ./part1 $file1
+    g++ -o main main.cpp
+    ./main $file1
     python3 main.py ./$i/$file2 $file2
     python3 main.py ./$i/$file3 $file3
     python3 main.py ./$i/$file4 $file4

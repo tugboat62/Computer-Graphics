@@ -1,7 +1,7 @@
 n=4
 if [ $# -eq 1 ]
   then
-    n = $1
+    n=$1
 fi
 echo "Running for $n folders"
 
@@ -12,7 +12,7 @@ do
     file2="stage1.txt"
     file3="stage2.txt"
     file4="stage3.txt"
-    g++ -o main main.cpp
+    g++ main.cpp -o main
     ./main $file1
     python3 main.py ./$i/$file2 $file2
     python3 main.py ./$i/$file3 $file3

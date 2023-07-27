@@ -1,6 +1,7 @@
 import sys
 
 def compare_files(file1, file2):
+    equal = True
     with open(file1, 'r') as f1, open(file2, 'r') as f2:
         lines1 = f1.readlines()
         lines2 = f2.readlines()
@@ -20,14 +21,14 @@ def compare_files(file1, file2):
                 num2 = float(word2)
                 if num1 != num2:
                     print("num1: ", word1, "num2: ", word2)
-                    return False
+                    equal = False
 
         # Check if both files have the same number of lines
         if len(lines1) != len(lines2):
             print("len(lines1): ", len(lines1), "len(lines2): ", len(lines2))
-            return False
+            equal = False
 
-        return True
+        return equal
 
 if __name__ == "__main__":
     if len(sys.argv) != 3:

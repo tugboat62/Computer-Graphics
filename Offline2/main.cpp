@@ -1,9 +1,18 @@
+/*
+    This code works fine in windows except for some values the output doesnot match with
+    the test cases provided. Example: in test case 10.00000 and the generated output is 9.9999999.
+    Differs only by .000000x with the given test cases. Also in linux the string compare method is
+    not working. Have no idea why this happens:(
+*/ 
+
+
 #include <iostream>
 #include <fstream>
 #include <stack>
 #include <sstream>
 #include <cmath>
 #include <iomanip>
+#include <string>
 
 #define _USE_MATH_DEFINES
 
@@ -397,7 +406,6 @@ int main(int argc, char** argv) {
                 // string output3 = to_string(newP3.x) + " " + to_string(newP3.y) + " " + to_string(newP3.z);
                 // stage3 << output3 << endl; // output P’’’
                 stage3 << fixed << setprecision(7) << newP3.x << " " << newP3.y << " " << newP3.z << endl;
-                // cout << "Triangle: " << newP3.x << " " << newP3.y << " " << newP3.z << endl;
             }
             stage1 << endl;
             stage2 << endl;
@@ -447,7 +455,6 @@ int main(int argc, char** argv) {
         }
         
     }
-
 
     inputFile.close();
     stage1.close();

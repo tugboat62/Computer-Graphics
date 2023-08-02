@@ -300,11 +300,7 @@ void crossProduct(struct Point *p1, struct Point *p2, struct Point *p3) {
 
 int main(int argc, char** argv) {
 
-    string file1 = "4/scene.txt";
-
-    if (argc == 2) {
-        file1 = argv[1];
-    }
+    string file1 = "scene.txt";
 
     ifstream inputFile(file1);
     ofstream stage1("stage1.txt");

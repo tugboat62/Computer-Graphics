@@ -601,18 +601,12 @@ int main(int argc, char** argv) {
                 copyPoint(line, &p);
                 struct Point newP;
                 transformPoint(p, &newP);
-                // string output = to_string(newP.x) + " " + to_string(newP.y) + " " + to_string(newP.z);
-                // stage1 << output << endl; // output P’
                 stage1 << fixed << setprecision(7) << newP.x << " " << newP.y << " " << newP.z << endl;
                 struct Point newP2;
                 transformPoint(newP, &newP2, RT);
-                // string output2 = to_string(newP2.x) + " " + to_string(newP2.y) + " " + to_string(newP2.z);
-                // stage2 << output2 << endl; // output P’’
                 stage2 << fixed << setprecision(7) << newP2.x << " " << newP2.y << " " << newP2.z << endl;
                 struct Point newP3;
                 transformPoint(newP2, &newP3, P);
-                // string output3 = to_string(newP3.x) + " " + to_string(newP3.y) + " " + to_string(newP3.z);
-                // stage3 << output3 << endl; // output P’’’
                 stage3 << fixed << setprecision(7) << newP3.x << " " << newP3.y << " " << newP3.z << endl;
             }
             stage1 << endl;

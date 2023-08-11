@@ -19,23 +19,18 @@ float z_max = 2.0;
 
 float **z_buffer;
 
-struct point
+struct Point
 {
     float x, y, z;
 };
 
 struct triangle
 {
-    point p1, p2, p3;
+    Point p1, p2, p3;
 };
 
-vector<point> points;
+vector<Point> points;
 vector<triangle> triangles;
-
-struct point pos; // position of the eye
-struct point l;   // look/forward direction
-struct point r;   // right direction
-struct point u;   // up direction
 
 static unsigned long int g_seed = 1;
 inline int random()
@@ -90,7 +85,7 @@ void readFile()
             coord[j] = number;
             j++;
         }
-        point p = {coord[0], coord[1], coord[2]};
+        Point p = {coord[0], coord[1], coord[2]};
         points.push_back(p);
     }
 
@@ -187,9 +182,9 @@ void startProcess()
         red = random();
         green = random();
         blue = random();
-        point v1 = {triangles[i].p2.x - triangles[i].p1.x, triangles[i].p2.y - triangles[i].p1.y, triangles[i].p2.z - triangles[i].p1.z};
-        point v2 = {triangles[i].p3.x - triangles[i].p1.x, triangles[i].p3.y - triangles[i].p1.y, triangles[i].p3.z - triangles[i].p1.z};
-        point n = {v1.y * v2.z - v1.z * v2.y, v1.z * v2.x - v1.x * v2.z, v1.x * v2.y - v1.y * v2.x};
+        Point v1 = {triangles[i].p2.x - triangles[i].p1.x, triangles[i].p2.y - triangles[i].p1.y, triangles[i].p2.z - triangles[i].p1.z};
+        Point v2 = {triangles[i].p3.x - triangles[i].p1.x, triangles[i].p3.y - triangles[i].p1.y, triangles[i].p3.z - triangles[i].p1.z};
+        Point n = {v1.y * v2.z - v1.z * v2.y, v1.z * v2.x - v1.x * v2.z, v1.x * v2.y - v1.y * v2.x};
         float a = n.x, b = n.y, c = n.z, d = -(a * triangles[i].p1.x + b * triangles[i].p1.y + c * triangles[i].p1.z);
 
         int top_row = (int)((1-top_scanline) / dy);

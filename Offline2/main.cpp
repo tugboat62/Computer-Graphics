@@ -685,8 +685,9 @@ int main(int argc, char** argv) {
 
     for (int i = 0; i < width; i++)
     {
-        for (int j = 0; j < height; j++)
-            z_buffer_file << z_buffer[i][j] << " ";
+        for (int j = 0; j < height; j++){
+            if (z_buffer[i][j] < 2) z_buffer_file << z_buffer[i][j] << " ";
+        }
         z_buffer_file << endl;
     }
     z_buffer_file.close();

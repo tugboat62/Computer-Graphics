@@ -746,9 +746,9 @@ void readFile()
 /* Main function: GLUT runs as a console application starting at main()  */
 int main(int argc, char **argv)
 {
-    pos.x = 3;
-    pos.y = 3;
-    pos.z = 3;
+    pos.x = 70;
+    pos.y = 70;
+    pos.z = 70;
 
     l.x = -.25;
     l.y = -.25;

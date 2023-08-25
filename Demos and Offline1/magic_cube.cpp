@@ -4,7 +4,6 @@
 #include <windows.h> // for MS Windows
 #include <GL/glut.h> // GLUT, include glu.h and gl.h
 #include <cmath>
-#include "Cubesphere.h"
 #include <vector>
 
 std::vector<float> vertices_for_circle;

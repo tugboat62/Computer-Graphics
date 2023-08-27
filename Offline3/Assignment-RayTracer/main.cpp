@@ -1,6 +1,7 @@
 #define _USE_MATH_DEFINES
 
 #include <iostream>
+#include <stdio.h>
 #include <windows.h> // for MS Windows
 #include <GL/glut.h> // GLUT, include glu.h and gl.h
 #include <cmath>
@@ -10,56 +11,19 @@
 #include <sstream>
 #include <vector>
 #include "bitmap_image.hpp"
+#include "shapes.h"
 
-std::vector<float> vertices_for_circle;
+using namespace std;
 
-struct point
-{
-    float x, y, z;
-};
-
-struct sphere
-{
-    point center;
-    float r, kd, ks, ka, kr, shine;
-    point color;
-};
-
-struct pyramid
-{
-    point lowest_point;
-    float width, height, shine, kd, ks, ka, kr;
-    point color;
-};
-
-struct cube
-{
-    point bottom_lower_left;
-    float side, shine, kd, ks, ka, kr;
-    point color;
-};
-
-struct normallight
-{
-    point position;
-    point color;
-    float falloff;
-};
-
-struct spotlight
-{
-    point position;
-    point color;
-    float falloff;
-    point direction;
-    float cutoff;
-};
-
-std::vector<sphere> spheres;
-std::vector<pyramid> pyramids;
-std::vector<cube> cubes;
-std::vector<normallight> normal_lights;
-std::vector<spotlight> spot_lights;
+bitmap_image image;
+vector<sphere> spheres;
+vector<pyramid> pyramids;
+vector<cube> cubes;
+vector<triangle> triangles;
+vector<square> squares;
+vector<normallight> normal_lights;
+vector<spotlight> spot_lights;
+vector<void *> objects;
 
 struct point pos; // position of the eye
 struct point l;   // look/forward direction
@@ -71,91 +35,10 @@ GLfloat far_plane;
 GLfloat fov, aspect_ratio, recursion_level, checkerboard;
 GLfloat ka, kd, kr;
 int pixel_size, no_objects, normal_light, spot_light;
-
-std::vector<float> buildUnitPositiveX(int subdivision)
-{
-    const float DEG2RAD = acos(-1) / 180.0f;
-
-    std::vector<float> vertices;
-    float n1[3]; // normal of longitudinal plane rotating along Y-axis
-    float n2[3]; // normal of latitudinal plane rotating along Z-axis
-    float v[3];  // direction vector intersecting 2 planes, n1 x n2
-    float a1;    // longitudinal angle along Y-axis
-    float a2;    // latitudinal angle along Z-axis
-
-    // compute the number of vertices per row, 2^n + 1
-    int pointsPerRow = (int)pow(2, subdivision) + 1;
-
-    // rotate latitudinal plane from 45 to -45 degrees along Z-axis (top-to-bottom)
-    for (unsigned int i = 0; i < pointsPerRow; ++i)
-    {
-        // normal for latitudinal plane
-        // if latitude angle is 0, then normal vector of latitude plane is n2=(0,1,0)
-        // therefore, it is rotating (0,1,0) vector by latitude angle a2
-        a2 = DEG2RAD * (45.0f - 90.0f * i / (pointsPerRow - 1));
-        n2[0] = -sin(a2);
-        n2[1] = cos(a2);
-        n2[2] = 0;
-
-        // rotate longitudinal plane from -45 to 45 along Y-axis (left-to-right)
-        for (unsigned int j = 0; j < pointsPerRow; ++j)
-        {
-            // normal for longitudinal plane
-            // if longitude angle is 0, then normal vector of longitude is n1=(0,0,-1)
-            // therefore, it is rotating (0,0,-1) vector by longitude angle a1
-            a1 = DEG2RAD * (-45.0f + 90.0f * j / (pointsPerRow - 1));
-            n1[0] = -sin(a1);
-            n1[1] = 0;
-            n1[2] = -cos(a1);
-
-            // find direction vector of intersected line, n1 x n2
-            v[0] = n1[1] * n2[2] - n1[2] * n2[1];
-            v[1] = n1[2] * n2[0] - n1[0] * n2[2];
-            v[2] = n1[0] * n2[1] - n1[1] * n2[0];
-
-            // normalize direction vector
-            float scale = 1 / sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2]);
-            v[0] *= scale;
-            v[1] *= scale;
-            v[2] *= scale;
-
-            // add a vertex into array
-            vertices.push_back(v[0]);
-            vertices.push_back(v[1]);
-            vertices.push_back(v[2]);
-        }
-    }
-
-    return vertices;
-}
-
-void drawCircle()
-{
-    int r = (int)sqrt(vertices_for_circle.size() / 3);
-    int c = r * 3;
-    float mat[r][c];
-    for (int i = 0; i < r; i++)
-    {
-        for (int j = 0; j < c; j += 1)
-        {
-            mat[i][j] = vertices_for_circle[i * c + j];
-        }
-    }
-    for (int i = 0; i < r - 1; i++)
-    {
-        for (int k = 0; k + 3 < c; k += 3)
-        {
-            glBegin(GL_QUADS);
-            glVertex3f(mat[i][k], mat[i][k + 1], mat[i][k + 2]);
-            glVertex3f(mat[i][k + 3], mat[i][k + 4], mat[i][k + 5]);
-            glVertex3f(mat[i + 1][k + 3], mat[i + 1][k + 4], mat[i + 1][k + 5]);
-            glVertex3f(mat[i + 1][k], mat[i + 1][k + 1], mat[i + 1][k + 2]);
-            glEnd();
-        }
-    }
-}
-
-int subdivision = 5;
+int numTiles = 20;
+float windowWidth = 4;
+float windowHeight = 4;
+int imageCount = 1;
 
 /* Initialize OpenGL Graphics */
 void initGL()
@@ -163,17 +46,13 @@ void initGL()
     // Set "clearing" or background color
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f); // Black and opaque
     glEnable(GL_DEPTH_TEST);              // Enable depth testing for z-culling
-    vertices_for_circle = buildUnitPositiveX(subdivision);
 }
 
 // Global variables
-int trans_rate = 16;
-int sc_up_down = trans_rate;
-double scaling_triangle = sqrt(2.0 / 3) / (double)(trans_rate);
 
-GLfloat t_side = 1.0; // Triangle side length
-float angle = 0.0;    // Rotation angle for animation
-bool rotate = false;  // Rotate triangle?
+float angle = 0.0;   // Rotation angle for animation
+bool rotate = false; // Rotate triangle?
+int drawgrid = 0;    // Toggle grids
 
 void drawAxes()
 {
@@ -194,44 +73,6 @@ void drawAxes()
     glVertex3f(0, 0, 0);
     glVertex3f(0, 0, 2);
     glEnd();
-}
-
-void drawTriangle(int up_down, GLdouble dec)
-{
-    glBegin(GL_TRIANGLES);
-    glVertex3d(dec, 0, 0);           // Bottom-left
-    glVertex3d(0, up_down * dec, 0); // Top
-    glVertex3d(0, 0, dec);           // Bottom-right
-    glEnd();
-}
-
-void drawRectangle(int up_down, GLdouble dec)
-{
-    glBegin(GL_QUADS);
-    glVertex3d(dec, 0, 0);
-    glVertex3d(0, 0, dec);
-    glVertex3d(-dec, 0, 0);
-    glVertex3d(0, 0, -dec);
-    glEnd();
-}
-
-void drawCylinder(GLdouble r, GLdouble h)
-{
-    double phi = M_PI - acos(-1 / 3);
-    for (double theta = (M_PI - phi) / 2.0; theta < (M_PI + phi) / 2.0; theta += 0.001)
-    {
-        GLdouble x1 = r * cos(theta);
-        GLdouble y1 = r * sin(theta);
-
-        GLdouble x2 = r * cos(theta - 0.5 * M_PI / 180);
-        GLdouble y2 = r * sin(theta - 0.5 * M_PI / 180);
-        glBegin(GL_QUADS);
-        glVertex3d(x1, y1, -h / 2.0);
-        glVertex3d(x1, y1, h / 2.0);
-        glVertex3d(x2, y2, h / 2.0);
-        glVertex3d(x2, y2, -h / 2.0);
-        glEnd();
-    }
 }
 
 void drawPyramid(struct pyramid p)
@@ -256,7 +97,16 @@ void drawPyramid(struct pyramid p)
     glVertex3f(0.0f, p.height, 0.0f);
     glVertex3f(-p.width / sqrt(2), 0.0f, 0.0f);
     glVertex3f(0.0f, 0.0f, p.width / sqrt(2));
-    glEnd(); // Done drawing the pyramid
+    glEnd();
+
+    glBegin(GL_QUADS);
+    // Bottom
+    glVertex3f(p.width / sqrt(2), 0.0f, 0.0f);
+    glVertex3f(0.0f, 0.0f, p.width / sqrt(2));
+    glVertex3f(0.0f, 0.0f, -p.width / sqrt(2));
+    glVertex3f(-p.width / sqrt(2), 0.0f, 0.0f);
+    glEnd(); 
+
 }
 
 void drawCube(struct cube c)
@@ -304,6 +154,33 @@ void drawCube(struct cube c)
 void drawSphere(struct sphere s)
 {
     glutSolidSphere(s.r, 50, 50);
+}
+
+void drawGrid()
+{
+    int i;
+    if (drawgrid == 1)
+    {
+        glColor3f(0.6, 0.6, 0.6); // grey
+        glBegin(GL_LINES);
+        {
+            for (i = -8; i <= 8; i++)
+            {
+
+                if (i == 0)
+                    continue; // SKIP the MAIN axes
+
+                // lines parallel to Y-axis
+                glVertex3f(i * 10, -90, 0);
+                glVertex3f(i * 10, 90, 0);
+
+                // lines parallel to X-axis
+                glVertex3f(-90, i * 10, 0);
+                glVertex3f(90, i * 10, 0);
+            }
+        }
+        glEnd();
+    }
 }
 
 void display()
@@ -354,6 +231,88 @@ void display()
     }
 
     glutSwapBuffers(); // Render now
+}
+
+void capture()
+{
+    cout << "Capturing Image" << endl;
+    image.setwidth_height(pixel_size,pixel_size);
+
+    // initialize bitmap image and set background color to black
+    for (int i = 0; i < pixel_size; i++)
+        for (int j = 0; j < pixel_size; j++)
+            image.set_pixel(i, j, 0, 0, 0);
+
+    // image.save_image("black.bmp");
+
+    double planeDistance = (windowHeight / 2.0) / tan((M_PI * fov/2) / (360.0));
+
+    point topLeft = pos + (l * planeDistance) + (u * (windowHeight / 2.0)) - (r * (windowWidth / 2.0));
+
+    double du = windowWidth / (pixel_size * 1.0);
+    double dv = windowHeight / (pixel_size * 1.0);
+
+    // Choose middle of the grid cell
+    topLeft = topLeft + (r * du / 2.0) - (u * dv / 2.0);
+
+    int nearestObjectIndex = -1;
+    double t, tMin;
+
+    for (int i = 0; i < pixel_size; i++)
+    {
+        for (int j = 0; j < pixel_size; j++)
+        {
+            // calculate current pixel
+            point pixel = topLeft + (r * du * i) - (u * dv * j);
+
+            // cast ray from eye to pixel
+            Ray ray(pos, pixel - pos);
+            // Color color;
+            double r = 0, g = 0, b = 0;
+
+            // cout<<"Ray direction "<<ray.dir<<endl;
+
+            // find nearest object
+            tMin = -1;
+            nearestObjectIndex = -1;
+            for (int k = 0; k < no_objects; k++)
+            {
+                t = objects[k]->intersect(ray, color, 0);
+                if (t > 0 && (nearestObjectIndex == -1 || t < tMin))
+                    tMin = t, nearestObjectIndex = k;
+            }
+
+            // if nearest object is found, then shade the pixel
+            if (nearestObjectIndex != -1)
+            {
+                // cout<<"Object "<<nearestObjectIndex<<" intersected"<<endl;
+                // color = objects[nearestObjectIndex]->color;
+                // cout<<"Before Color "<<r<<" "<<g<<" "<<b<<endl;
+                double t = objects[nearestObjectIndex]->intersect(ray, color, 1);
+
+                if (r > 1)
+                    r = 1;
+                if (g > 1)
+                    g = 1;
+                if (b > 1)
+                    b = 1;
+
+                if (r < 0)
+                    r = 0;
+                if (g < 0)
+                    g = 0;
+                if (b < 0)
+                    b = 0;
+
+                // cout<<"After Color "<<r<<" "<<g<<" "<<b<<endl;
+                image.set_pixel(i, j, 255 * r, 255 * g, 255 * b);
+            }
+        }
+    }
+
+    image.save_image("Output_1" + to_string(imageCount) + ".bmp");
+    imageCount++;
+    cout << "Saving Image" << endl;
 }
 
 /* Handler for window re-size event. Called back when the window first appears and
@@ -459,14 +418,12 @@ void keyboardListener(unsigned char key, int x, int y)
         // rotate obj counterclockwise
         angle += 5;
         break;
-    case ',':
-        if (sc_up_down > 0)
-            sc_up_down--;
-        break;
     case '.':
-        if (sc_up_down < trans_rate)
-            sc_up_down++;
+        drawgrid = 1 - drawgrid;
         break;
+    case '0':
+        // Output a bmp image using ray tracing
+
     // Control exit
     case 27:     // ESC key
         exit(0); // Exit window
@@ -517,20 +474,99 @@ void specialKeyListener(int key, int x, int y)
     glutPostRedisplay(); // Post a paint request to activate display()
 }
 
+void insert_cube_planes(cube c) {
+    point p1(c.side, c.side, -c.side);
+    p1 = p1+c.bottom_lower_left;
+    point p2(0.0f, c.side, -c.side);
+    p2 = p2+c.bottom_lower_left;
+    point p3(0.0f, c.side, 0.0f);
+    p3 = p3+c.bottom_lower_left;
+    point p4(c.side, c.side, 0.0f);
+    p4 = p4+c.bottom_lower_left;
+
+    square s1(p1, p2, p3, p4, c.color, c.shine, c.ka, c.kd, c.ks, c.kr);
+
+    // Bottom face
+    point p5(c.side, 0.0f, -c.side);
+    p5 = p5+c.bottom_lower_left;
+    point p6(0.0f, 0.0f, -c.side);
+    p6 = p6+c.bottom_lower_left;
+    point p7(0.0f, 0.0f, 0.0f);
+    p7 = p7+c.bottom_lower_left;
+    point p8(c.side, 0.0f, 0.0f);
+    p8 = p8+c.bottom_lower_left;     
+
+    square s2(p5, p6, p7, p8, c.color, c.shine, c.ka, c.kd, c.ks, c.kr);
+
+    // Front face
+    square s3(p4, p3, p7, p8, c.color, c.shine, c.ka, c.kd, c.ks, c.kr);
+
+    // Back face
+    square s4(p5, p6, p2, p1, c.color, c.shine, c.ka, c.kd, c.ks, c.kr);
+
+    // Left face
+    square s5(p2, p3, p7, p6, c.color, c.shine, c.ka, c.kd, c.ks, c.kr);
+
+    // Right face
+    square s6(p1, p4, p8, p5, c.color, c.shine, c.ka, c.kd, c.ks, c.kr);
+    squares.push_back(s1);
+    squares.push_back(s2);
+    squares.push_back(s3);
+    squares.push_back(s4);
+    squares.push_back(s5);
+    squares.push_back(s6);
+}
+
+void insert_pyramid_planes(pyramid p) {
+    // Front
+    point p1(0.0f, p.height, 0.0f);
+    p1 = p1+p.lowest_point;
+    point p2(0.0f, 0.0f, p.width / sqrt(2));
+    p2 = p2+p.lowest_point;
+    point p3(p.width / sqrt(2), 0.0f, 0.0f);
+    p3 = p3+p.lowest_point;
+
+    triangle t1(p1, p2, p3, p.color, p.shine, p.ka, p.kd, p.ks, p.kr);
+
+    // Right
+    point p6(0.0f, 0.0f, -p.width / sqrt(2));
+    p6 = p6+p.lowest_point;
+
+    triangle t2(p1, p3, p6, p.color, p.shine, p.ka, p.kd, p.ks, p.kr);
+
+    // Back
+    point p9(-p.width / sqrt(2), 0.0f, 0.0f);
+    p9 = p9+p.lowest_point;
+
+    triangle t3(p1, p6, p9, p.color, p.shine, p.ka, p.kd, p.ks, p.kr);
+
+    // Left
+    triangle t4(p1, p9, p2, p.color, p.shine, p.ka, p.kd, p.ks, p.kr);
+
+    // Bottom
+    square s1(p3, p2, p9, p6, p.color, p.shine, p.ka, p.kd, p.ks, p.kr);
+
+    triangles.push_back(t1);
+    triangles.push_back(t2);
+    triangles.push_back(t3);
+    triangles.push_back(t4);
+    squares.push_back(s1);
+}
+
 void readFile()
 {
-    std::ifstream file;
+    ifstream file;
     file.open("input.txt");
     if (!file)
     {
-        std::cout << "Unable to open file";
+        cout << "Unable to open file";
         exit(1); // terminate with error
     }
-    std::string line;
-    std::getline(file, line);
+    string line;
+    getline(file, line);
 
-    std::istringstream iss(line);
-    std::string token;
+    istringstream iss(line);
+    string token;
 
     float coord[4];
     int j = 0;
@@ -545,17 +581,17 @@ void readFile()
     fov = coord[2];
     aspect_ratio = coord[3];
 
-    std::getline(file, line);
+    getline(file, line);
     recursion_level = stod(line);
 
-    std::getline(file, line);
+    getline(file, line);
     pixel_size = stoi(line);
 
-    std::getline(file, line);
+    getline(file, line);
     checkerboard = stod(line);
 
-    std::getline(file, line);
-    std::istringstream iss2(line);
+    getline(file, line);
+    istringstream iss2(line);
     j = 0;
     while (iss2 >> token)
     {
@@ -567,32 +603,32 @@ void readFile()
     kd = coord[1];
     kr = coord[2];
 
-    std::getline(file, line);
+    getline(file, line);
     no_objects = stoi(line);
 
     float tokens[13];
 
-    while (std::getline(file, line))
+    while (getline(file, line))
     {
         if (line.compare("cube") == 0)
         {
             j = 0;
             for (int i = 0; i < 5; i++)
             {
-                std::getline(file, line);
-                std::istringstream iss3(line);
+                getline(file, line);
+                istringstream iss3(line);
                 while (iss3 >> token)
                 {
                     float number = stod(token);
-                    // std::cout << number << std::endl;
+                    // cout << number << endl;
                     tokens[j] = number;
-                    // std::cout << tokens[j] << std::endl;
+                    // cout << tokens[j] << endl;
                     j++;
                 }
             }
             struct cube c;
             c.bottom_lower_left.x = tokens[0];
-            // std::cout << c.bottom_lower_left.x << std::endl;
+            // cout << c.bottom_lower_left.x << endl;
             c.bottom_lower_left.y = tokens[1];
             c.bottom_lower_left.z = tokens[2];
             c.side = tokens[3];
@@ -604,16 +640,18 @@ void readFile()
             c.ks = tokens[9];
             c.kr = tokens[10];
             c.shine = tokens[11];
-            // std::cout << c.bottom_lower_left.x << " " << c.bottom_lower_left.y << " " << c.bottom_lower_left.z << " " << c.side << " " << c.color.x << " " << c.color.y << " " << c.color.z << " " << c.ka << " " << c.kd << " " << c.ks << " " << c.kr << " " << c.shine << std::endl;
+            // cout << c.bottom_lower_left.x << " " << c.bottom_lower_left.y << " " << c.bottom_lower_left.z << " " << c.side << " " << c.color.x << " " << c.color.y << " " << c.color.z << " " << c.ka << " " << c.kd << " " << c.ks << " " << c.kr << " " << c.shine << endl;
             cubes.push_back(c);
+            objects.push_back(&c);
+            insert_cube_planes(c);
         }
         else if (line.compare("sphere") == 0)
         {
             j = 0;
             for (int i = 0; i < 5; i++)
             {
-                std::getline(file, line);
-                std::istringstream iss4(line);
+                getline(file, line);
+                istringstream iss4(line);
                 while (iss4 >> token)
                 {
                     float number = stod(token);
@@ -635,14 +673,15 @@ void readFile()
             s.kr = tokens[10];
             s.shine = tokens[11];
             spheres.push_back(s);
+            objects.push_back(&s);
         }
         else if (line.compare("pyramid") == 0)
         {
             j = 0;
             for (int i = 0; i < 5; i++)
             {
-                std::getline(file, line);
-                std::istringstream iss5(line);
+                getline(file, line);
+                istringstream iss5(line);
                 while (iss5 >> token)
                 {
                     float number = stod(token);
@@ -664,8 +703,10 @@ void readFile()
             p.ks = tokens[10];
             p.kr = tokens[11];
             p.shine = tokens[12];
-            // std::cout << p.lowest_point.x << " " << p.lowest_point.y << " " << p.lowest_point.z << " " << p.width << " " << p.height << " " << p.color.x << " " << p.color.y << " " << p.color.z << " " << p.ka << " " << p.kd << " " << p.ks << " " << p.kr << " " << p.shine << endl;
+            // cout << p.lowest_point.x << " " << p.lowest_point.y << " " << p.lowest_point.z << " " << p.width << " " << p.height << " " << p.color.x << " " << p.color.y << " " << p.color.z << " " << p.ka << " " << p.kd << " " << p.ks << " " << p.kr << " " << p.shine << endl;
             pyramids.push_back(p);
+            objects.push_back(&p);
+            insert_pyramid_planes(p);
         }
         else
         {
@@ -675,8 +716,8 @@ void readFile()
             {
                 for (int k = 0; k < 3; k++)
                 {
-                    std::getline(file, line);
-                    std::istringstream iss6(line);
+                    getline(file, line);
+                    istringstream iss6(line);
                     while (iss6 >> token)
                     {
                         float number = stod(token);
@@ -697,15 +738,15 @@ void readFile()
             break;
         }
     }
-    std::getline(file, line);
+    getline(file, line);
     spot_light = stoi(line);
     j = 0;
     for (int i = 0; i < spot_light; i++)
     {
         for (int k = 0; k < 4; k++)
         {
-            std::getline(file, line);
-            std::istringstream iss7(line);
+            getline(file, line);
+            istringstream iss7(line);
             while (iss7 >> token)
             {
                 float number = stod(token);
@@ -731,34 +772,34 @@ void readFile()
 
     for (int i = 0; i < cubes.size(); i++)
     {
-        std::cout << cubes[i].bottom_lower_left.x << " " << cubes[i].bottom_lower_left.y << " " << cubes[i].bottom_lower_left.z << " " << cubes[i].side << " " << cubes[i].color.x << " " << cubes[i].color.y << " " << cubes[i].color.z << " " << cubes[i].ka << " " << cubes[i].kd << " " << cubes[i].ks << " " << cubes[i].kr << " " << cubes[i].shine << std::endl;
+        cout << cubes[i].bottom_lower_left.x << " " << cubes[i].bottom_lower_left.y << " " << cubes[i].bottom_lower_left.z << " " << cubes[i].side << " " << cubes[i].color.x << " " << cubes[i].color.y << " " << cubes[i].color.z << " " << cubes[i].ka << " " << cubes[i].kd << " " << cubes[i].ks << " " << cubes[i].kr << " " << cubes[i].shine << endl;
     }
     for (int i = 0; i < spheres.size(); i++)
     {
-        std::cout << spheres[i].center.x << " " << spheres[i].center.y << " " << spheres[i].center.z << " " << spheres[i].r << " " << spheres[i].color.x << " " << spheres[i].color.y << " " << spheres[i].color.z << " " << spheres[i].ka << " " << spheres[i].kd << " " << spheres[i].ks << " " << spheres[i].kr << " " << spheres[i].shine << std::endl;
+        cout << spheres[i].center.x << " " << spheres[i].center.y << " " << spheres[i].center.z << " " << spheres[i].r << " " << spheres[i].color.x << " " << spheres[i].color.y << " " << spheres[i].color.z << " " << spheres[i].ka << " " << spheres[i].kd << " " << spheres[i].ks << " " << spheres[i].kr << " " << spheres[i].shine << endl;
     }
     for (int i = 0; i < pyramids.size(); i++)
     {
-        std::cout << pyramids[i].lowest_point.x << " " << pyramids[i].lowest_point.y << " " << pyramids[i].lowest_point.z << " " << pyramids[i].width << " " << pyramids[i].height << " " << pyramids[i].color.x << " " << pyramids[i].color.y << " " << pyramids[i].color.z << " " << pyramids[i].ka << " " << pyramids[i].kd << " " << pyramids[i].ks << " " << pyramids[i].kr << " " << pyramids[i].shine << std::endl;
+        cout << pyramids[i].lowest_point.x << " " << pyramids[i].lowest_point.y << " " << pyramids[i].lowest_point.z << " " << pyramids[i].width << " " << pyramids[i].height << " " << pyramids[i].color.x << " " << pyramids[i].color.y << " " << pyramids[i].color.z << " " << pyramids[i].ka << " " << pyramids[i].kd << " " << pyramids[i].ks << " " << pyramids[i].kr << " " << pyramids[i].shine << endl;
     }
 }
 
 /* Main function: GLUT runs as a console application starting at main()  */
 int main(int argc, char **argv)
 {
-    pos.x = 70;
-    pos.y = 70;
-    pos.z = 70;
+    pos.x = 0;
+    pos.y = -200;
+    pos.z = 35;
 
-    l.x = -.25;
-    l.y = -.25;
-    l.z = -.25;
+    l.x = -1 / sqrt(2);
+    l.y = -1 / sqrt(2);
+    l.z = 0;
     u.x = 0;
     u.y = 1;
     u.z = 0;
-    r.x = .25;
-    r.y = 0;
-    r.z = -.25;
+    r.x = -1 / sqrt(2);
+    r.y = 1 / sqrt(2);
+    r.z = 0;
 
     readFile();
 

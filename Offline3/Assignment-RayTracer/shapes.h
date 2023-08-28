@@ -1,5 +1,7 @@
 #include<bits/stdc++.h>
 
+using namespace std;
+
 struct point
 {
     double x, y, z;
@@ -51,6 +53,23 @@ struct point
     {
         output << fixed << setprecision(7) << p.x << " " << p.y <<" " << p.z;
         return output;
+    }
+};
+
+struct Ray{
+    point origin, dir;
+    
+    Ray(point origin, point dir){
+        this->origin = origin;
+        dir.normalize();
+        this->dir = dir;
+    }
+
+    // stream
+    friend ostream& operator<<(ostream &out, Ray r)
+    {
+        out << "Origin : " << r.origin << ", Direction : " << r.dir;
+        return out;
     }
 };
 
@@ -161,8 +180,6 @@ struct sphere
 struct pyramid
 {
     point lowest_point;
-    triangle t_left, t_right, t_front, t_back;
-    square base;
     double width, height, shine, kd, ks, ka, kr;
     point color;
     
@@ -170,7 +187,6 @@ struct pyramid
 
 struct cube
 {
-    square bottom, top, front, back, left, right;
     point bottom_lower_left;
     double side, shine, kd, ks, ka, kr;
     point color;
@@ -190,21 +206,4 @@ struct spotlight
     double falloff;
     point direction;
     double cutoff;
-};
-
-struct Ray{
-    point origin, dir;
-    
-    Ray(point origin, point dir){
-        this->origin = origin;
-        dir.normalize();
-        this->dir = dir;
-    }
-
-    // stream
-    friend ostream& operator<<(ostream &out, Ray r)
-    {
-        out << "Origin : " << r.origin << ", Direction : " << r.dir;
-        return out;
-    }
 };

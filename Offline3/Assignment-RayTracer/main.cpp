@@ -25,7 +25,7 @@ vector<normallight> normal_lights;
 vector<spotlight> spot_lights;
 vector<void *> objects;
 
-struct point pos; // position of the eye
+struct point pos(0,-200, 35); // position of the eye
 struct point l;   // look/forward direction
 struct point r;   // right direction
 struct point u;   // up direction
@@ -277,7 +277,7 @@ void capture()
             nearestObjectIndex = -1;
             for (int k = 0; k < no_objects; k++)
             {
-                t = objects[k]->intersect(ray, color, 0);
+                // t = objects[k]->intersect(ray, color, 0);
                 if (t > 0 && (nearestObjectIndex == -1 || t < tMin))
                     tMin = t, nearestObjectIndex = k;
             }
@@ -288,7 +288,7 @@ void capture()
                 // cout<<"Object "<<nearestObjectIndex<<" intersected"<<endl;
                 // color = objects[nearestObjectIndex]->color;
                 // cout<<"Before Color "<<r<<" "<<g<<" "<<b<<endl;
-                double t = objects[nearestObjectIndex]->intersect(ray, color, 1);
+                // double t = objects[nearestObjectIndex]->intersect(ray, color, 1);
 
                 if (r > 1)
                     r = 1;
@@ -787,19 +787,16 @@ void readFile()
 /* Main function: GLUT runs as a console application starting at main()  */
 int main(int argc, char **argv)
 {
-    pos.x = 0;
-    pos.y = -200;
-    pos.z = 35;
-
-    l.x = -1 / sqrt(2);
-    l.y = -1 / sqrt(2);
-    l.z = 0;
+    l.x = -pos.x;
+    l.y = -pos.y;
+    l.z = -pos.z;
+    l.normalize();
     u.x = 0;
     u.y = 1;
     u.z = 0;
-    r.x = -1 / sqrt(2);
-    r.y = 1 / sqrt(2);
-    r.z = 0;
+    r.x = l.x;
+    r.y = -l.y;
+    r.z = l.z;
 
     readFile();
 
